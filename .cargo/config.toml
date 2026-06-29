@@ -1,2 +1,2 @@
 [env]
-DATABASE_URL = "postgres://postgres:easy@localhost:5432/hound-production"
+DATABASE_URL = "postgres://postgres:easy@localhost:5432/production"

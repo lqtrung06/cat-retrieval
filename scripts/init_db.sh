@@ -17,7 +17,7 @@ fi
 
 DB_USER="${POSTGRES_USER:=postgres}"
 DB_PASSWORD="${POSTGRES_PASSWORD:=easy}"
-DB_NAME="${POSTGRES_DB:=hound-production}"
+DB_NAME="${POSTGRES_DB:=production}"
 DB_PORT="${POSTGRES_PORT:=5432}"
 
 # Allow to skip Docker if a dockerized Postgres database is already running

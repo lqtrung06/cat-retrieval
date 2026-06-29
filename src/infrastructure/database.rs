@@ -1,68 +1,79 @@
 use sqlx::postgres::{PgPool, PgPoolOptions};
+use std::error::Error;
 
-#[derive(Clone, Copy)]
-pub struct DatabaseConfig {
-    host: &'static str,
-    port: u16,
-    username: &'static str,
-    password: &'static str,
-    database_name: &'static str,
-}
+pub struct Database;
 
-pub struct DevelopmentDatabase;
-pub struct ProductionDatabase;
+impl Database {
+    const HOST: &'static str = "127.0.0.1";
+    const PORT: u16 = 5432;
+    const USERNAME: &'static str = "postgres";
+    const PASSWORD: &'static str = "easy";
 
-trait Connection {
-    fn has_credential(&self) -> DatabaseConfig;
+    pub async fn connect(&self, database_name: &str) -> Result<PgPool, sqlx::Error> {
+        PgPoolOptions::new()
+            .max_connections(5)
+            .connect(&format!(
+                "postgres://{}:{}@{}:{}/{}",
+                Self::USERNAME,
+                Self::PASSWORD,
+                Self::HOST,
+                Self::PORT,
+                database_name
+            ))
+            .await
+    }
 
-    fn connection_string(&self) -> String {
-        let info = self.has_credential();
+    pub async fn create(&self, database_name: &str) -> Result<(), sqlx::Error> {
+        let maintenance_pool = self.connect("postgres").await?;
+        sqlx::query(&format!(
+            "CREATE DATABASE {}",
+            quote_database_name(database_name)
+        ))
+        .execute(&maintenance_pool)
+        .await?;
+        maintenance_pool.close().await;
 
-        format!(
-            "postgres://{}:{}@{}:{}/{}",
-            info.username, info.password, info.host, info.port, info.database_name
+        Ok(())
+    }
+
+    pub async fn clone(&self, database_name: &str) -> Result<PgPool, Box<dyn Error + Send + Sync>> {
+        self.create(database_name).await?;
+
+        let pool = self.connect(database_name).await?;
+        sqlx::migrate!("./migrations").run(&pool).await?;
+
+        Ok(pool)
+    }
+
+    pub async fn drop(&self, database_name: &str) -> Result<(), sqlx::Error> {
+        let maintenance_pool = self.connect("postgres").await?;
+
+        sqlx::query(
+            r#"
+            SELECT pg_terminate_backend(pid)
+            FROM pg_stat_activity
+            WHERE datname = $1
+              AND pid <> pg_backend_pid()
+            "#,
         )
+        .bind(database_name)
+        .execute(&maintenance_pool)
+        .await?;
+
+        sqlx::query(&format!(
+            "DROP DATABASE {}",
+            quote_database_name(database_name)
+        ))
+        .execute(&maintenance_pool)
+        .await?;
+        maintenance_pool.close().await;
+
+        Ok(())
     }
 }
 
-impl DevelopmentDatabase {
-    pub async fn connect(&self) -> Result<PgPool, sqlx::Error> {
-        PgPoolOptions::new()
-            .max_connections(5)
-            .connect(&self.connection_string())
-            .await
-    }
-}
+fn quote_database_name(database_name: &str) -> String {
+    assert!(!database_name.is_empty(), "database name cannot be empty");
 
-impl ProductionDatabase {
-    pub async fn connect(&self) -> Result<PgPool, sqlx::Error> {
-        PgPoolOptions::new()
-            .max_connections(5)
-            .connect(&self.connection_string())
-            .await
-    }
-}
-
-impl Connection for DevelopmentDatabase {
-    fn has_credential(&self) -> DatabaseConfig {
-        DatabaseConfig {
-            host: "127.0.0.1",
-            port: 5432,
-            username: "postgres",
-            password: "easy",
-            database_name: "development",
-        }
-    }
-}
-
-impl Connection for ProductionDatabase {
-    fn has_credential(&self) -> DatabaseConfig {
-        DatabaseConfig {
-            host: "127.0.0.1",
-            port: 5432,
-            username: "postgres",
-            password: "easy",
-            database_name: "production",
-        }
-    }
+    format!(r#""{}""#, database_name.replace('"', r#""""#))
 }

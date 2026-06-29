@@ -1,15 +1,10 @@
-use hound::infrastructure::database::DevelopmentDatabase;
-
 #[tokio::test]
 async fn health_check_works() {
     // Prepare
-    let db_pool = DevelopmentDatabase
-        .connect()
-        .await
-        .expect("Failed to connect to database");
-    let address = hound::app::run(None, db_pool)
+    let address = hound::app::run(None, None)
         .expect("Failed to spawn app")
         .to_string();
+
     let client = reqwest::Client::new();
 
     // Act
