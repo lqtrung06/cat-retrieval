@@ -1,0 +1,10 @@
+commit 1:
+
+As a user,
+I want to upload my media to the website,
+So that I can later query on it.
+
+As a user,
+I want to make natural language queries on my medias,
+So that I can find relevant pictures for nostalgia.
+
