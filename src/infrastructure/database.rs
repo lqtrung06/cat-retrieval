@@ -10,7 +10,6 @@ pub struct DatabaseConfig {
 }
 
 pub struct DevelopmentDatabase;
-
 pub struct ProductionDatabase;
 
 trait Connection {
@@ -50,7 +49,7 @@ impl Connection for DevelopmentDatabase {
             host: "127.0.0.1",
             port: 5432,
             username: "postgres",
-            password: "password",
+            password: "easy",
             database_name: "development",
         }
     }
@@ -62,7 +61,7 @@ impl Connection for ProductionDatabase {
             host: "127.0.0.1",
             port: 5432,
             username: "postgres",
-            password: "password",
+            password: "easy",
             database_name: "production",
         }
     }

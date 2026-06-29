@@ -1,3 +1,4 @@
+mod authentication;
 pub mod routes;
 
 use actix_web::{App, HttpServer, web};
